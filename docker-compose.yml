@@ -1,0 +1,47 @@
+services:
+  yt-digest:
+    build: .
+    image: yt-digest:local
+    container_name: yt-digest
+    restart: unless-stopped
+    environment:
+      # --- required ---
+      DISCORD_TOKEN: ${DISCORD_TOKEN:?set DISCORD_TOKEN in .env}
+      DISCORD_APP_ID: ${DISCORD_APP_ID:?set DISCORD_APP_ID in .env}
+      VAULT_DIR: /vault
+
+      # --- Discord ---
+      # Set this to register the slash command instantly in your home server. Global
+      # registration can take up to an hour to propagate.
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+
+      # --- inference (Mac Mini over the LAN) ---
+      # No cloud APIs: this is the whole point (ADR 0002).
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-10m}
+
+      # --- vault ---
+      NOTE_SUBDIR: ${NOTE_SUBDIR:-Video Notes}
+
+      # --- concurrency ---
+      # 2 saturates the Mac Mini. Raising this degrades every other job running there
+      # (ADR 0002). QUEUE_DEPTH only bounds how much can be waiting (ADR 0003).
+      MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS:-2}
+      QUEUE_DEPTH: ${QUEUE_DEPTH:-10}
+      DRAIN_TIMEOUT: ${DRAIN_TIMEOUT:-5m}
+
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # The vault is a Samba share on the Mac Mini. Writes are tmp → fsync → rename →
+      # verify, because a note that lands empty is worse than one that never lands
+      # (ADR 0004). This is the same share your laptop and desktop mount.
+      - ${VAULT_HOST_PATH:?set VAULT_HOST_PATH in .env}:/vault
+    extra_hosts:
+      # Lets the container reach the Mac Mini by hostname.
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

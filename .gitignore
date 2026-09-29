@@ -1,0 +1,14 @@
+# Build artifacts
+/yt-digest
+/bin/
+/.bin/
+*.exe
+*.test
+*.out
+
+# Local config — .env holds the Discord token, never commit it
+.env
+
+# Note scratch space
+*.md.tmp
+.ytdigest-*
